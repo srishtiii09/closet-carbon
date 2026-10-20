@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Closet Carbon</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="card">
+    <h1>Closet Carbon 🌱</h1>
+    <p>Upload your outfit and see its environmental impact.</p>
+
+    <form method="POST" action="/analyze" enctype="multipart/form-data">
+    <input type="file" name="image" accept="image/*" required>
+    <button type="submit">Analyze</button>
+</form>
+{% if result %}
+<div class="result">
+    <h2>AI Analysis</h2>
+    <pre>{{ result }}</pre>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="error">
+    {{ error }}
+</div>
+{% endif %}
+
+</div>
+
+</body>
+
+{# ── 1. WEAR COUNT INPUT — add this to your upload form ────────────────── #}
+<label for="wear_count">How many times have you worn this?</label>
+<input type="number" id="wear_count" name="wear_count"
+       value="{{ wear_count or 0 }}" min="0" placeholder="0">
+{# That's it — it submits with the image and app.py reads it automatically #}
+
+
+{# ── 2. ECO RESULTS BLOCK — replaces / extends your current result display #}
+{% if eco %}
+  {% if eco.success %}
+
+    {# Fabric name #}
+    <h2>{{ eco.fabric_label }}</h2>
+    {% if eco.is_blend %}<p>Blend detected</p>{% endif %}
+
+    {# Eco score (contextual — changes with wears) #}
+    <p>
+      Eco Score: <strong>{{ eco.eco_score }} / 100</strong>
+      {{ eco.eco_tier.emoji }} {{ eco.eco_tier.label }}
+    </p>
+
+    {# Wears remaining #}
+    <p>
+      Wears remaining: <strong>{{ eco.wears_remaining }}</strong>
+      ({{ eco.wear_pct_used }}% of lifespan used)
+    </p>
+
+    {# Properties #}
+    <p>Biodegradable: {{ "Yes ✅" if eco.biodegradable else "No ❌" }}</p>
+    <p>Releases microplastics: {{ "Yes ⚠️" if eco.microplastics else "No ✅" }}</p>
+
+    {# Notes #}
+    <p><em>{{ eco.notes }}</em></p>
+
+    {# Advice message (always shown) #}
+    <p>{{ eco.advice.message }}</p>
+
+    {# Wash warning (only for synthetic fabrics) #}
+    {% if eco.advice.wash_warning %}
+      <p>🧺 {{ eco.advice.wash_warning }}</p>
+    {% endif %}
+
+    {# Upcycle / disposal block (only shown when urgency is "soon" or "now") #}
+    {% if eco.advice.should_upcycle %}
+      <h3>♻️ Upcycle Ideas</h3>
+      <ul>
+        {% for idea in eco.advice.upcycle_ideas %}
+          <li>{{ idea }}</li>
+        {% endfor %}
+      </ul>
+
+      <h3>🗑️ Disposal Options</h3>
+      <ul>
+        {% for option in eco.advice.disposal %}
+          <li>{{ option }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {# Greener alternatives (shown when alternatives exist) #}
+    {% if eco.advice.alternatives %}
+      <h3>🌱 Greener Alternatives</h3>
+      <ul>
+        {% for alt in eco.advice.alternatives %}
+          <li>{{ alt }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+  {% else %}
+    {# Fabric not in database #}
+    <p>{{ eco.error }}</p>
+  {% endif %}
+{% endif %}
+
+
+{# ── 3. "I WORE THIS TODAY" BUTTON — calls /log_wear via JS ────────────── #}
+{% if eco and eco.success %}
+<button onclick="logWear()">👗 I wore this today</button>
+<p id="wear-feedback"></p>
+
+<script>
+  let currentWears = {{ (wear_count|default(0))|tojson }};
+  const fabricLabel = {{ (eco.fabric_label or '')|tojson }};
+
+  async function logWear() {
+    const res = await fetch("/log_wear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fabric_label: fabricLabel, wear_count: currentWears })
+    });
+    const data = await res.json();
+    currentWears = data.wear_count;
+    document.getElementById("wear-feedback").textContent =
+      `Worn ${currentWears} time(s). Eco score: ${data.eco.eco_score}/100. ` +
+      `Wears remaining: ${data.eco.wears_remaining}.`;
+    if (data.eco.advice.should_upcycle) {
+      document.getElementById("wear-feedback").textContent +=
+        " 💡 " + data.eco.advice.message;
+    }
+  }
+</script>
+{% endif %}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Closet Carbon Result</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="card">
+    <h1>🌍 Outfit Impact</h1>
+
+    <p><strong>Detected Fabric:</strong> {{ fabric }}</p>
+    <p><strong>Water Used:</strong> {{ water }} liters</p>
+    <p><strong>CO₂ Emissions:</strong> {{ co2 }} kg</p>
+    <p><strong>Estimated Lifespan:</strong> {{ wears }} wears</p>
+
+    <hr>
+
+    <h3>This outfit cost the planet:</h3>
+    <p>🌱 {{ impact }}</p>
+
+    <h3>Wearing it 20 times reduces impact by:</h3>
+    <p>💚 {{ reduction }}%</p>
+
+    <br>
+    <a href="/">Analyze another outfit</a>
+</div>
+
+</body>
+</html>
